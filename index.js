@@ -311,7 +311,6 @@ client.on('messageCreate', async message => {
     const getRoleMembers = (roleId) => {
         const role = message.guild.roles.cache.get(roleId);
         if (!role) return '`Place Libre`';
-        await role.members.fetch?.().catch(() => {});
         const members = role.members.map(m => `<@${m.id}>`).join(' **//** ');
         return members || '`Place Libre`';
     };
