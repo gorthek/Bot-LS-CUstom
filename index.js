@@ -507,4 +507,7 @@ client.on('interactionCreate', async interaction => {
 
 }); // ✅ UNE SEULE accolade fermante ici
 
+const http = require('http');
+http.createServer((req, res) => res.end('OK')).listen(process.env.PORT || 8080);
+
 client.login(config.token);
