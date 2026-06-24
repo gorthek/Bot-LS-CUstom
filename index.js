@@ -248,14 +248,17 @@ client.on('messageCreate', async message => {
 
     if (command === 'ticketsetup') { 
         const embed = new EmbedBuilder() 
-            .setTitle("🔧 LS Custom - Support & Devis") 
-            .setDescription("Cliquez sur le bouton ci-dessous pour ouvrir un ticket. Un mécanicien prendra votre demande en charge au plus vite.") 
-            .setColor("#00246B"); 
+            .setTitle("🔧 LS Custom - Centre de Support & Devis") 
+            .setDescription("Bienvenue au garage **LS Custom** !\n\nPour toute demande de customisation, réparation ou pour un devis, veuillez ouvrir un ticket en cliquant sur le bouton ci-dessous.\n\n⏱️ *Un mécanicien prendra votre demande en charge dans les plus brefs délais.*") 
+            .setColor("#00246B")
+            .setFooter({ text: "LS Custom - Système de Ticket" })
+            // Tu peux enlever les '//' ci-dessous et mettre un vrai lien d'image pour ajouter le logo du LS Custom en haut à droite de l'embed
+            // .setThumbnail('LIEN_IMAGE_LOGO_LS_CUSTOM'); 
 
         const row = new ActionRowBuilder().addComponents( 
             new ButtonBuilder() 
                 .setCustomId('create_ticket') 
-                .setLabel('RECRUTEMENT LS') 
+                .setLabel('Ouvrir un ticket') // J'ai remplacé "RECRUTEMENT LS" pour que ça colle au texte
                 .setEmoji('🛠️') 
                 .setStyle(ButtonStyle.Primary) 
         ); 
@@ -447,64 +450,72 @@ client.on('interactionCreate', async interaction => {
 
     // --- BOUTONS ---
     if (interaction.isButton()) { 
-        if (interaction.customId === 'create_ticket') { 
-            const channelName = `ticket-${interaction.user.username}`; 
-            const existingChannel = interaction.guild.channels.cache.find(c => c.name === channelName.toLowerCase()); 
-            if (existingChannel) return interaction.reply({ content: "Vous avez déjà un ticket ouvert !", ephemeral: true }); 
+    if (interaction.customId === 'create_ticket') { 
+        const channelName = `ticket-${interaction.user.username}`; 
+        const existingChannel = interaction.guild.channels.cache.find(c => c.name === channelName.toLowerCase()); 
+        if (existingChannel) return interaction.reply({ content: "❌ Vous avez déjà un ticket ouvert !", ephemeral: true }); 
 
-            const ticketChannel = await interaction.guild.channels.create({ 
-                name: channelName, 
-                type: ChannelType.GuildText, 
-                parent: config.ticketCategoryId, 
-                permissionOverwrites: [ 
-                    { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }, 
-                    { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }, 
-                    { id: config.supportRoleId, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] } 
-                ] 
-            }); 
+        const ticketChannel = await interaction.guild.channels.create({ 
+            name: channelName, 
+            type: ChannelType.GuildText, 
+            parent: config.ticketCategoryId, 
+            permissionOverwrites: [ 
+                { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }, 
+                { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }, 
+                { id: config.supportRoleId, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] } 
+            ] 
+        }); 
 
-            await interaction.reply({ content: `✅ Ticket créé : ${ticketChannel}`, ephemeral: true }); 
+        await interaction.reply({ content: `✅ Ticket créé avec succès : ${ticketChannel}`, ephemeral: true }); 
 
-            const welcomeEmbed = new EmbedBuilder() 
-                .setTitle("🎟️ Nouveau Ticket") 
-                .setDescription(`Bienvenue ${interaction.user} !\nExplique-nous ton problème ou détaille ta demande de customisation. Un membre de l'équipe arrivera bientôt.`) 
-                .setColor("#00246B"); 
+        // --- NOUVEL EMBED PLUS BEAU ---
+        const welcomeEmbed = new EmbedBuilder() 
+            .setAuthor({ name: "Support LS Custom", iconURL: interaction.guild.iconURL() })
+            .setTitle("🎟️ Nouveau Ticket Ouvert") 
+            .setDescription(`Bienvenue ${interaction.user} dans ton espace privé !\n\nUn membre de l'équipe <@&${config.supportRoleId}> va s'occuper de toi sous peu. En attendant, merci de nous donner un maximum de détails.`) 
+            .addFields(
+                { name: '📋 Pour aller plus vite :', value: '• Quel est le modèle du véhicule ?\n• Quelles sont les modifications souhaitées ?\n• Quel est ton budget approximatif ?' }
+            )
+            .setColor("#00246B")
+            .setFooter({ text: "Ticket généré par LS Custom", iconURL: interaction.user.displayAvatarURL() })
+            .setTimestamp(); // Ajoute l'heure en bas de l'embed
 
-            const closeBtn = new ActionRowBuilder().addComponents( 
-                new ButtonBuilder() 
-                    .setCustomId('close_ticket') 
-                    .setLabel('Fermer le ticket') 
-                    .setEmoji('🔒') 
-                    .setStyle(ButtonStyle.Danger) 
-            ); 
+        const closeBtn = new ActionRowBuilder().addComponents( 
+            new ButtonBuilder() 
+                .setCustomId('close_ticket') 
+                .setLabel('Fermer le ticket') 
+                .setEmoji('🔒') 
+                .setStyle(ButtonStyle.Danger) 
+        ); 
 
-            ticketChannel.send({ content: `<@&${config.supportRoleId}>`, embeds: [welcomeEmbed], components: [closeBtn] }); 
-        } 
-
-        if (interaction.customId === 'close_ticket') { 
-            if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageChannels) && !config.moderatorIds.includes(interaction.user.id)) { 
-                return interaction.reply({ content: "Seul le staff LS Custom peut fermer ce ticket.", ephemeral: true }); 
-            } 
-            await interaction.reply("🔒 Le ticket va être fermé dans 5 secondes et sauvegardé..."); 
-            const logChannel = interaction.guild.channels.cache.get(config.logChannelId); 
-            if (logChannel) { 
-                const transcriptHtml = await generateTranscript(interaction.channel); 
-                const buffer = Buffer.from(transcriptHtml, 'utf-8'); 
-                const attachment = new AttachmentBuilder(buffer, { name: `transcript-${interaction.channel.name}.html` }); 
-                const logEmbed = new EmbedBuilder() 
-                    .setTitle("🔒 Ticket Fermé (via bouton)") 
-                    .addFields( 
-                        { name: "Nom du ticket", value: interaction.channel.name, inline: true }, 
-                        { name: "Fermé par", value: interaction.user.tag, inline: true } 
-                    ) 
-                    .setColor("Red") 
-                    .setTimestamp(); 
-                await logChannel.send({ embeds: [logEmbed], files: [attachment] }).catch(console.error); 
-            } 
-            setTimeout(() => interaction.channel.delete().catch(console.error), 5000); 
-        } 
+        // J'ai séparé le ping du staff du message principal pour que l'embed soit bien mis en valeur
+        ticketChannel.send({ content: `🔔 Alerte équipe : <@&${config.supportRoleId}>`, embeds: [welcomeEmbed], components: [closeBtn] }); 
     } 
 
+    // --- LE RESTE DE TON CODE (FERMETURE) RESTE IDENTIQUE ---
+    if (interaction.customId === 'close_ticket') { 
+        if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageChannels) && !config.moderatorIds.includes(interaction.user.id)) { 
+            return interaction.reply({ content: "❌ Seul le staff LS Custom peut fermer ce ticket.", ephemeral: true }); 
+        } 
+        await interaction.reply("🔒 Le ticket va être fermé dans 5 secondes et sauvegardé..."); 
+        const logChannel = interaction.guild.channels.cache.get(config.logChannelId); 
+        if (logChannel) { 
+            const transcriptHtml = await generateTranscript(interaction.channel); 
+            const buffer = Buffer.from(transcriptHtml, 'utf-8'); 
+            const attachment = new AttachmentBuilder(buffer, { name: `transcript-${interaction.channel.name}.html` }); 
+            const logEmbed = new EmbedBuilder() 
+                .setTitle("🔒 Ticket Fermé (via bouton)") 
+                .addFields( 
+                    { name: "Nom du ticket", value: interaction.channel.name, inline: true }, 
+                    { name: "Fermé par", value: interaction.user.tag, inline: true } 
+                ) 
+                .setColor("Red") 
+                .setTimestamp(); 
+            await logChannel.send({ embeds: [logEmbed], files: [attachment] }).catch(console.error); 
+        } 
+        setTimeout(() => interaction.channel.delete().catch(console.error), 5000); 
+    } 
+}
 }); // ✅ UNE SEULE accolade fermante ici
 
 const http = require('http');
