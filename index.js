@@ -516,7 +516,7 @@ client.on('interactionCreate', async interaction => {
                 .setStyle(ButtonStyle.Danger) 
         ); 
 
-        ticketChannel.send({ content: `🔔 Alerte équipe : <@&${config.supportRoleId}>`, embeds: [welcomeEmbed], components: [closeBtn] }); 
+        ticketChannel.send({ content: `🔔 Alerte équipe : <@&${config.supportRoleId}>  <@&${config.moderatorIds}>`, embeds: [welcomeEmbed], components: [closeBtn] }); 
     } 
 
     // --- LE RESTE DU CODE (FERMETURE) ---
