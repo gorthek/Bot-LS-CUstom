@@ -453,11 +453,18 @@ client.on('interactionCreate', async interaction => {
 
     // --- BOUTONS ---
     if (interaction.isButton()) { 
-    if (interaction.customId === 'create_ticket') { 
-        const channelName = `ticket-${interaction.user.username}`; 
+    // On vérifie si l'ID du bouton est l'un des deux boutons de création de ticket
+    if (interaction.customId === 'create_ticket_meca' || interaction.customId === 'create_ticket_recrutement') { 
+        
+        // On détermine le type de ticket
+        const isRecrutement = interaction.customId === 'create_ticket_recrutement';
+        const typeNom = isRecrutement ? 'recrutement' : 'meca';
+        
+        const channelName = `ticket-${typeNom}-${interaction.user.username}`; 
         const existingChannel = interaction.guild.channels.cache.find(c => c.name === channelName.toLowerCase()); 
-        if (existingChannel) return interaction.reply({ content: "❌ Vous avez déjà un ticket ouvert !", ephemeral: true }); 
+        if (existingChannel) return interaction.reply({ content: "❌ Vous avez déjà un ticket de ce type ouvert !", ephemeral: true }); 
 
+        // Création du salon (identique pour les deux)
         const ticketChannel = await interaction.guild.channels.create({ 
             name: channelName, 
             type: ChannelType.GuildText, 
@@ -469,19 +476,37 @@ client.on('interactionCreate', async interaction => {
             ] 
         }); 
 
-        await interaction.reply({ content: `✅ Ticket créé avec succès : ${ticketChannel}`, ephemeral: true }); 
+        await interaction.reply({ content: `✅ Ticket créé : ${ticketChannel}`, ephemeral: true }); 
 
-        // --- NOUVEL EMBED PLUS BEAU ---
-        const welcomeEmbed = new EmbedBuilder() 
-            .setAuthor({ name: "Support LS Custom", iconURL: interaction.guild.iconURL() })
-            .setTitle("🎟️ Nouveau Ticket Ouvert") 
-            .setDescription(`Bienvenue ${interaction.user} dans ton espace privé !\n\nUn membre de l'équipe <@&${config.supportRoleId}> va s'occuper de toi sous peu. En attendant, merci de nous donner un maximum de détails.`) 
-            .addFields(
-                { name: '📋 Pour aller plus vite :', value: '• Quel est le modèle du véhicule ?\n• Quelles sont les modifications souhaitées ?\n• Quel est ton budget approximatif ?' }
-            )
-            .setColor("#00246B")
-            .setFooter({ text: "Ticket généré par LS Custom", iconURL: interaction.user.displayAvatarURL() })
-            .setTimestamp(); // Ajoute l'heure en bas de l'embed
+        // --- PREPARATION DE L'EMBED SELON LE CHOIX ---
+        let welcomeEmbed;
+
+        if (isRecrutement) {
+            // EMBED POUR LE RECRUTEMENT
+            welcomeEmbed = new EmbedBuilder() 
+                .setAuthor({ name: "Service Recrutement LS Custom", iconURL: interaction.guild.iconURL() })
+                .setTitle("📝 Dépôt de Candidature") 
+                .setDescription(`Bienvenue ${interaction.user} !\n\nPour postuler au sein du LS Custom, nous te demandons de bien vouloir nous fournir un **Google Doc (GDocs)** contenant ta candidature complète.`) 
+                .addFields(
+                    { name: '📄 Ton GDocs doit impérativement contenir :', value: "• Une présentation IRL & RP.\n• Tes motivations à rejoindre le garage.\n• Tes disponibilités (jours / heures).\n• Tes expériences précédentes en mécanique (si tu en as)." },
+                    { name: '⚠️ Important', value: "N'oublie pas de mettre ton Google Doc en accès public (Tout le monde avec le lien) pour que la direction puisse le lire !" }
+                )
+                .setColor("#2ECC71") // Vert pour le recrutement
+                .setFooter({ text: "Recrutement en cours", iconURL: interaction.user.displayAvatarURL() })
+                .setTimestamp();
+        } else {
+            // EMBED POUR LE MECANO (Aide Mechanic)
+            welcomeEmbed = new EmbedBuilder() 
+                .setAuthor({ name: "Support LS Custom", iconURL: interaction.guild.iconURL() })
+                .setTitle("🎟️ Demande Mechanic") 
+                .setDescription(`Bienvenue ${interaction.user} !\nExplique-nous ton problème ou détaille ta demande de customisation. Un membre de l'équipe arrivera bientôt.`) 
+                .addFields(
+                    { name: '📋 Pour aller plus vite :', value: '• Modèle du véhicule ?\n• Modifications souhaitées ?\n• Budget approximatif ?' }
+                )
+                .setColor("#00246B") // Bleu pour le mécano
+                .setFooter({ text: "Support Mechanic", iconURL: interaction.user.displayAvatarURL() })
+                .setTimestamp();
+        }
 
         const closeBtn = new ActionRowBuilder().addComponents( 
             new ButtonBuilder() 
@@ -491,14 +516,13 @@ client.on('interactionCreate', async interaction => {
                 .setStyle(ButtonStyle.Danger) 
         ); 
 
-        // J'ai séparé le ping du staff du message principal pour que l'embed soit bien mis en valeur
         ticketChannel.send({ content: `🔔 Alerte équipe : <@&${config.supportRoleId}>`, embeds: [welcomeEmbed], components: [closeBtn] }); 
     } 
 
-    // --- LE RESTE DE TON CODE (FERMETURE) RESTE IDENTIQUE ---
+    // --- LE RESTE DU CODE (FERMETURE) ---
     if (interaction.customId === 'close_ticket') { 
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageChannels) && !config.moderatorIds.includes(interaction.user.id)) { 
-            return interaction.reply({ content: "❌ Seul le staff LS Custom peut fermer ce ticket.", ephemeral: true }); 
+            return interaction.reply({ content: "Seul le staff LS Custom peut fermer ce ticket.", ephemeral: true }); 
         } 
         await interaction.reply("🔒 Le ticket va être fermé dans 5 secondes et sauvegardé..."); 
         const logChannel = interaction.guild.channels.cache.get(config.logChannelId); 
