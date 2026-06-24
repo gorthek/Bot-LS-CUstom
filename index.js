@@ -247,25 +247,28 @@ client.on('messageCreate', async message => {
     } 
 
     if (command === 'ticketsetup') { 
-        const embed = new EmbedBuilder() 
-            .setTitle("🔧 LS Custom - Centre de Support & Devis") 
-            .setDescription("Bienvenue au garage **LS Custom** !\n\nPour toute demande de customisation, réparation ou pour un devis, veuillez ouvrir un ticket en cliquant sur le bouton ci-dessous.\n\n⏱️ *Un mécanicien prendra votre demande en charge dans les plus brefs délais.*") 
-            .setColor("#00246B")
-            .setFooter({ text: "LS Custom - Système de Ticket" })
-            // Tu peux enlever les '//' ci-dessous et mettre un vrai lien d'image pour ajouter le logo du LS Custom en haut à droite de l'embed
-            // .setThumbnail('LIEN_IMAGE_LOGO_LS_CUSTOM'); 
+    const embed = new EmbedBuilder() 
+        .setTitle("🔧 LS Custom - Accueil & Support") 
+        .setDescription("Bienvenue au **LS Custom** !\n\nMerci de choisir le type de demande en cliquant sur l'un des boutons ci-dessous :\n\n🛠️ **Aide Mechanic** : Pour un devis, une réparation ou une customisation.\n📝 **Recrutement** : Pour déposer ta candidature et rejoindre l'équipe.") 
+        .setColor("#00246B"); 
 
-        const row = new ActionRowBuilder().addComponents( 
-            new ButtonBuilder() 
-                .setCustomId('create_ticket') 
-                .setLabel('Ouvrir un ticket') // J'ai remplacé "RECRUTEMENT LS" pour que ça colle au texte
-                .setEmoji('🛠️') 
-                .setStyle(ButtonStyle.Primary) 
-        ); 
+    const row = new ActionRowBuilder().addComponents( 
+        new ButtonBuilder() 
+            .setCustomId('create_ticket_meca') // Nouvel ID pour le mécano
+            .setLabel('Aide Mechanic') 
+            .setEmoji('🛠️') 
+            .setStyle(ButtonStyle.Primary),
+            
+        new ButtonBuilder() 
+            .setCustomId('create_ticket_recrutement') // Nouvel ID pour le recrutement
+            .setLabel('Recrutement') 
+            .setEmoji('📝') 
+            .setStyle(ButtonStyle.Success) // Bouton vert pour différencier
+    ); 
 
-        message.channel.send({ embeds: [embed], components: [row] }); 
-        message.delete(); 
-    } 
+    message.channel.send({ embeds: [embed], components: [row] }); 
+    message.delete(); 
+}
 
     if (command === 'embed') {
     const type = args[0]?.toLowerCase();
